@@ -1,4 +1,10 @@
 import os
+import numpy as np
+from scipy import stats
+from statsmodels.stats.multicomp import (pairwise_tukeyhsd, MultiComparison)
+import matplotlib as mpl
+mpl.use('tkagg')
+import matplotlib.pyplot as plt
 
 
 class Measure:
@@ -77,7 +83,7 @@ def terrier():
     fout.close()
     os.system(path+"terrier-core-4.4/bin/trec_terrier.sh -i")
     # run TF_IDF no stopword no Porter stemmer
-    os.system(path+"terrier-core-4.4/")
+    os.system(path+"terrier-core-4.4/bin/trec_terrier.sh -r -Dtrec.model=TF_IDF")
     copy_all("TF_IDF", 0, 0, 1)
 
 
@@ -171,24 +177,111 @@ def create_p_10_file(path, structure):
     f.close()
 
 
+def make_datagroup(structure):
+    data = np.zeros(200)
+    group = []
+    for j in range(len(structure)):
+        for i in range(structure[0].ntopic):
+            data[j*structure[0].ntopic+i] = float(structure[j].measure[i].ap)
+            if j == 0:
+                group.append("TF_IDF")
+            elif j == 1:
+                group.append("BM25")
+            elif j == 2:
+                group.append("BM25_stem")
+            else:
+                group.append("TD_IDF_not")
+    return data, group
+
+
+def ap_anova(structure):
+    ap = []
+    for j in range(len(structure)):
+        data = []
+        for i in range(structure[0].ntopic):
+            data.append(structure[j].measure[i].ap)
+        ap.append(data)
+    return ap
+
+
+def anova(structure):
+    ap = ap_anova(structure)
+    f, p = stats.f_oneway(ap[0], ap[1], ap[2], ap[3])
+    return f, p
+
+
+def print_anova(f, p):
+    print('One-way ANOVA')
+    print('=============')
+    print('F value:', f)
+    print('P value:', p, '\n')
+
+
+def tukey(structure, alpha):
+    data, group = make_datagroup(structure)
+    tukey = pairwise_tukeyhsd(data, group, alpha)
+    tukey.plot_simultaneous()    # Plot group confidence intervals
+    plt.show()
+    print(tukey.summary())
+
+
+def tukey1(structure, alpha):
+    data, group = make_datagroup(structure)
+    mc = MultiComparison(data, group)
+    result = mc.tukeyhsd(alpha)
+    result.plot_simultaneous()
+    plt.show()
+    print(result)
+
+
+def list_rprec(structure):
+    rprec = []
+    for j in range(len(structure)):
+        data = []
+        for i in range(structure[0].ntopic):
+            data.append(float(structure[j].measure[i].rprec))
+        rprec.append(data)
+    return rprec
+
+
+def list_topic(structure):
+    topic = []
+    for i in range(structure[0].ntopic):
+        topic.append(structure[0].measure[i].topic)
+    return topic
+
+
 # create indexes folder
 path = "/home/martinidav/Desktop/Homework_1_IR/resources/"
 files = os.listdir(path)
 if "indexes" not in files:
     os.system("mkdir " + path + "indexes")
+
+
+
+
 '''
 terrier()
-trec_eval()
 '''
+trec_eval()
 file = create_file(path)
 structure = data(file)
 create_ap_file(path, structure)
 create_rprec_file(path, structure)
 create_p_10_file(path, structure)
+'''
+f, p = anova(structure)
+print_anova(f, p)
+tukey(structure, 0.05)
+'''
 
-# ANOVA
 
 
+topic = list_topic(structure)
+rprec = list_rprec(structure)
 
+for i in range(len(rprec)):
+    plt.bar(topic, rprec[i])
+    plt.show()
 
 
