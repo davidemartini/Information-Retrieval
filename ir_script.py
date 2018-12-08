@@ -5,6 +5,7 @@ from statsmodels.stats.multicomp import (pairwise_tukeyhsd, MultiComparison)
 import matplotlib as mpl
 mpl.use('tkagg')
 import matplotlib.pyplot as plt
+from matplotlib.offsetbox import AnchoredText
 
 
 class Measure:
@@ -69,7 +70,16 @@ def terrier():
     copy_all("BM25", 1, 1, 1)
 
     setup_terrier()
-    os.system(path+"terrier-core-4.4/bin/trec_terrier.sh -i -Dtermpipelines=PorterStemmer")
+    f = open(path+"terrier-core-4.4/etc/terrier.properties", "r").read().split("\n")
+    fout = open(path+"terrier-core-4.4/etc/terrier.properties", "w")
+    for i in range(len(f)):
+        if f[i]=="termpipelines=Stopwords,PorterStemmer":
+            fout.write("termpipelines=PorterStemmer\n")
+        else:
+            fout.write(f[i]+"\n")
+    fout.close()
+    #os.system("echo -Dtermpipelines=PorterStemmer >> "+path+"terrier-core-4.4/etc/terrier.properties")
+    os.system(path+"terrier-core-4.4/bin/trec_terrier.sh -i ")
     # run BM25 Porter stemmer
     os.system(path+"terrier-core-4.4/bin/trec_terrier.sh -r -Dtrec.model=BM25")
     copy_all("BM25", 0, 1, 1)
@@ -78,7 +88,9 @@ def terrier():
     f = open(path+"terrier-core-4.4/etc/terrier.properties", "r").read().split("\n")
     fout = open(path+"terrier-core-4.4/etc/terrier.properties", "w")
     for i in range(len(f)):
-        if f[i] != "termpipelines=Stopwords,PorterStemmer" or f[i] != "stopwords.filename=stopword-list.txt":
+        if f[i] == "termpipelines=Stopwords,PorterStemmer":
+            fout.write("termpipelines=\n")
+        else:
             fout.write(f[i]+"\n")
     fout.close()
     os.system(path+"terrier-core-4.4/bin/trec_terrier.sh -i")
@@ -220,8 +232,22 @@ def print_anova(f, p):
 def tukey(structure, alpha):
     data, group = make_datagroup(structure)
     tukey = pairwise_tukeyhsd(data, group, alpha)
-    tukey.plot_simultaneous()    # Plot group confidence intervals
-    plt.show()
+    fig = tukey.plot_simultaneous()    # Plot group confidence intervals
+    fig.set_figwidth(30)
+    fig.set_figheight(20)
+    axes = fig.gca()
+    fig.suptitle('TukeyHSD test', fontsize=40)
+    axes.set_xlabel("Average Precision (AP)", fontsize=30)
+    axes.tick_params(labelsize=30)
+    fileplot = path+"indexes/run/plot/TukeyHSDtest.svg"
+    text = "TF_IDF = TF_IDF with Stopword and Porter Stemmer\n"
+    text = text + "BM25 = BM25 with Stopword and Porter Stemmer\n"
+    text = text + "BM25_stem = BM25 without Stopword with Porter Stemmer\n"
+    text = text + "TF_IDF_not = TF_IDF without Stopword and Porter Stemmer"
+    at = AnchoredText(text, loc='lower left', prop=dict(size=18), frameon=True)
+    at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+    axes.add_artist(at)
+    fig.savefig(fileplot, dpi=300)
     print(tukey.summary())
 
 
@@ -229,8 +255,15 @@ def tukey1(structure, alpha):
     data, group = make_datagroup(structure)
     mc = MultiComparison(data, group)
     result = mc.tukeyhsd(alpha)
-    result.plot_simultaneous()
-    plt.show()
+    fig = tukey.plot_simultaneous()    # Plot group confidence intervals
+    fig.set_figwidth(30)
+    fig.set_figheight(20)
+    axes = fig.gca()
+    fig.suptitle('TukeyHSD test', fontsize=40)
+    axes.set_xlabel("Average Precision (AP)", fontsize=30)
+    axes.tick_params(labelsize=30)
+    fileplot = path+"indexes/run/plot/TukeyHSDtest.svg"
+    fig.savefig(fileplot, dpi=300)
     print(result)
 
 
@@ -244,6 +277,16 @@ def list_rprec(structure):
     return rprec
 
 
+def list_p_10(structure):
+    p_10 = []
+    for j in range(len(structure)):
+        data = []
+        for i in range(structure[0].ntopic):
+            data.append(float(structure[j].measure[i].rprec))
+        p_10.append(data)
+    return p_10
+
+
 def list_topic(structure):
     topic = []
     for i in range(structure[0].ntopic):
@@ -251,37 +294,125 @@ def list_topic(structure):
     return topic
 
 
+def plot_rprec(topic, rprec):
+    files = os.listdir(path+"indexes/run/")
+    if "plot" not in files:
+        os.system("mkdir " + path + "indexes/run/plot")
+    for i in range(len(rprec)):
+        if i == 0:
+            title = "TF_IDF with Stopwords and Porter Stemmer"
+            fileplot = path+"indexes/run/plot/RprecTF_IDF.svg"
+        elif i == 1:
+            title = "BM25 with Stopwords and Porter Stemmer"
+            fileplot = path+"indexes/run/plot/RprecBM25.svg"
+        elif i == 2:
+            title = "BM25 without Stopwords with Prter Stemmer"
+            fileplot = path+"indexes/run/plot/RprecBM25_stem.svg"
+        else:
+            title = "TF_IDF without Stopwords and Porter Stemmer"
+            fileplot = path+"indexes/run/plot/RprecTF_IDF_not.svg"
+        plt.figure(figsize=(30, 20))
+        plt.rcParams.update({'font.size': 22})
+        plt.bar(topic, rprec[i])
+        plt.xticks(rotation=90)
+        plt.xlabel('Topics')
+        plt.ylabel('Rprec')
+        plt.suptitle(title, fontsize=40)
+        plt.savefig(fileplot, dpi=300)
+        plt.clf()
+
+
+def plot_p_10(topic, p_10):
+    files = os.listdir(path+"indexes/run/")
+    if "plot" not in files:
+        os.system("mkdir " + path + "indexes/run/plot")
+    for i in range(len(rprec)):
+        if i == 0:
+            title = "TF_IDF with Stopwords and Porter Stemmer"
+            fileplot = path+"indexes/run/plot/P_10TF_IDF.svg"
+        elif i == 1:
+            title = "BM25 with Stopwords and Porter Stemmer"
+            fileplot = path+"indexes/run/plot/P_10BM25.svg"
+        elif i == 2:
+            title = "BM25 without Stopwords with Prter Stemmer"
+            fileplot = path+"indexes/run/plot/P_10BM25_stem.svg"
+        else:
+            title = "TF_IDF without Stopwords and Porter Stemmer"
+            fileplot = path+"indexes/run/plot/P_10TF_IDF_not.svg"
+        plt.figure(figsize=(30, 20))
+        plt.rcParams.update({'font.size': 22})
+        plt.bar(topic, p_10[i])
+        plt.xticks(rotation=90)
+        plt.xlabel('Topics')
+        plt.ylabel('P(10)')
+        plt.suptitle(title, fontsize=40)
+        plt.savefig(fileplot, dpi=300)
+        plt.clf()
+
+
+def list_run():
+    run = []
+    run.append("TF_IDF")
+    run.append("BM25")
+    run.append("BM25_stem")
+    run.append("TD_IDF_not")
+    return run
+
+
+def list_map(structure):
+    map = []
+    for j in range(len(structure)):
+        index = structure[j].ntopic
+        map.append(float(structure[j].measure[index].ap))
+    return map
+
+
+def plot_map(run, map):
+    files = os.listdir(path+"indexes/run/")
+    if "plot" not in files:
+        os.system("mkdir " + path + "indexes/run/plot")
+    title = "MAP for all runs"
+    fileplot = path+"indexes/run/plot/MAPall.svg"
+    plt.figure(figsize=(30, 20))
+    plt.rcParams.update({'font.size': 22})
+    plt.bar(run, map, 0.25)
+    plt.xlabel('Runs')
+    plt.ylabel('MAP')
+    plt.suptitle(title, fontsize=40)
+    ax = plt.gca()
+    text = "TF_IDF = TF_IDF with Stopword and Porter Stemmer\n"
+    text = text+ "BM25 = BM25 with Stopword and Porter Stemmer\n"
+    text = text+ "BM25_stem = BM25 without Stopword with Porter Stemmer\n"
+    text = text + "TF_IDF_not = TF_IDF without Stopword and Porter Stemmer"
+    at = AnchoredText(text, loc='lower left', prop=dict(size=18), frameon=True)
+    at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+    ax.add_artist(at)
+    plt.savefig(fileplot, dpi=300)
+    plt.clf()
+
+
+
+
 # create indexes folder
 path = "/home/martinidav/Desktop/Homework_1_IR/resources/"
 files = os.listdir(path)
 if "indexes" not in files:
     os.system("mkdir " + path + "indexes")
-
-
-
-
-'''
-terrier()
-'''
+#terrier()
 trec_eval()
 file = create_file(path)
 structure = data(file)
 create_ap_file(path, structure)
 create_rprec_file(path, structure)
 create_p_10_file(path, structure)
-'''
 f, p = anova(structure)
 print_anova(f, p)
 tukey(structure, 0.05)
-'''
-
-
-
 topic = list_topic(structure)
 rprec = list_rprec(structure)
-
-for i in range(len(rprec)):
-    plt.bar(topic, rprec[i])
-    plt.show()
-
-
+plot_rprec(topic, rprec)
+p_10 = list_p_10(structure)
+plot_p_10(topic, p_10)
+run = list_run()
+map = list_map(structure)
+plot_map(run, map)
