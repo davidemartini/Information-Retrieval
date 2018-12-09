@@ -223,10 +223,12 @@ def anova(structure):
 
 
 def print_anova(f, p):
-    print('One-way ANOVA')
-    print('=============')
-    print('F value:', f)
-    print('P value:', p, '\n')
+    fw = open(path+"indexes/run/plot/anova.txt", "w")
+    anova = ['One-way ANOVA', '=============', 'F value: '+str(f), 'P value: '+str(p)]
+    for i in range(len(anova)):
+        print(anova[i])
+        fw.write(anova[i]+'\n')
+    fw.close()
 
 
 def tukey(structure, alpha):
@@ -248,7 +250,10 @@ def tukey(structure, alpha):
     at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
     axes.add_artist(at)
     fig.savefig(fileplot, dpi=300)
+    fw = open(path+"indexes/run/plot/tukeyHSD.txt", "w")
+    fw.write(str(tukey.summary()))
     print(tukey.summary())
+    fw.close()
 
 
 def tukey1(structure, alpha):
@@ -264,7 +269,10 @@ def tukey1(structure, alpha):
     axes.tick_params(labelsize=30)
     fileplot = path+"indexes/run/plot/TukeyHSDtest.svg"
     fig.savefig(fileplot, dpi=300)
+    fw = open(path+"indexes/run/plot/tukeyHSD.txt", "w")
+    fw.write(result)
     print(result)
+    fw.close()
 
 
 def list_rprec(structure):
