@@ -406,7 +406,7 @@ path = "/home/martinidav/Desktop/Homework_1_IR/resources/"
 files = os.listdir(path)
 if "indexes" not in files:
     os.system("mkdir " + path + "indexes")
-#terrier()
+terrier()
 trec_eval()
 file = create_file(path)
 structure = data(file)
