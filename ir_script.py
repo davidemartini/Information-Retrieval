@@ -314,7 +314,7 @@ def plot_rprec(topic, rprec):
             title = "BM25 with Stopwords and Porter Stemmer"
             fileplot = path+"indexes/run/plot/RprecBM25.svg"
         elif i == 2:
-            title = "BM25 without Stopwords with Prter Stemmer"
+            title = "BM25 without Stopwords with Porter Stemmer"
             fileplot = path+"indexes/run/plot/RprecBM25_stem.svg"
         else:
             title = "TF_IDF without Stopwords and Porter Stemmer"
@@ -342,7 +342,7 @@ def plot_p_10(topic, p_10):
             title = "BM25 with Stopwords and Porter Stemmer"
             fileplot = path+"indexes/run/plot/P_10BM25.svg"
         elif i == 2:
-            title = "BM25 without Stopwords with Prter Stemmer"
+            title = "BM25 without Stopwords with Porter Stemmer"
             fileplot = path+"indexes/run/plot/P_10BM25_stem.svg"
         else:
             title = "TF_IDF without Stopwords and Porter Stemmer"
@@ -406,7 +406,7 @@ path = "/home/martinidav/Desktop/Homework_1_IR/resources/"
 files = os.listdir(path)
 if "indexes" not in files:
     os.system("mkdir " + path + "indexes")
-terrier()
+#terrier()
 trec_eval()
 file = create_file(path)
 structure = data(file)
