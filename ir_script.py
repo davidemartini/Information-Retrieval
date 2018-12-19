@@ -383,16 +383,16 @@ def plot_p_10(topic, p_10):
         os.system("mkdir " + path + "indexes/run/plot")
     for i in range(len(rprec)):
         if i == 0:
-            title = "TF_IDF with Stopwords and Porter Stemmer"
+            title = "TF_IDF with stop list and Porter Stemmer"
             fileplot = path+"indexes/run/plot/P_10TF_IDF.svg"
         elif i == 1:
-            title = "BM25 with Stopwords and Porter Stemmer"
+            title = "BM25 with stop list and Porter Stemmer"
             fileplot = path+"indexes/run/plot/P_10BM25.svg"
         elif i == 2:
-            title = "BM25 without Stopwords with Porter Stemmer"
+            title = "BM25 without stop list with Porter Stemmer"
             fileplot = path+"indexes/run/plot/P_10BM25_stem.svg"
         elif i == 3:
-            title = "TF_IDF without Stopwords and Porter Stemmer"
+            title = "TF_IDF without stop list and Porter Stemmer"
             fileplot = path+"indexes/run/plot/P_10TF_IDF_not.svg"
         plt.figure(figsize=(30, 20))
         plt.rcParams.update({'font.size': 22})
@@ -435,10 +435,10 @@ def plot_map(run, map):
     plt.ylabel('MAP')
     plt.suptitle(title, fontsize=40)
     ax = plt.gca()
-    text = "TF_IDF = TF_IDF with Stopword and Porter Stemmer\n"
-    text = text + "BM25 = BM25 with Stopword and Porter Stemmer\n"
-    text = text + "BM25_stem = BM25 without Stopword with Porter Stemmer\n"
-    text = text + "TF_IDF_not = TF_IDF without Stopword and Porter Stemmer"
+    text = "TF_IDF = TF_IDF with stop list and Porter Stemmer\n"
+    text = text + "BM25 = BM25 with stop list and Porter Stemmer\n"
+    text = text + "BM25_stem = BM25 without stop list with Porter Stemmer\n"
+    text = text + "TF_IDF_not = TF_IDF without stop list and Porter Stemmer"
     at = AnchoredText(text, loc='lower left', prop=dict(size=18), frameon=True)
     at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
     ax.add_artist(at)
@@ -455,11 +455,11 @@ if "indexes" not in files:
     os.system("mkdir " + path + "indexes/run/plot")
 time = []
 # execute the indexing for each model
-terrier(time)
+#terrier(time)
 # collected time of executions is write
-create_time_file(path, time)
+#create_time_file(path, time)
 # execute the evaluation of runs
-trec_eval()
+#trec_eval()
 # read and memorize on file all measures
 file = create_file(path)
 structure = data(file)
