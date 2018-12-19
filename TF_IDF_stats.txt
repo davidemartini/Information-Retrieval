@@ -1,7 +1,7 @@
 Setting TERRIER_HOME to /home/martinidav/Desktop/Homework_1_IR/resources/terrier-core-4.4
 Setting JAVA_HOME to /usr
-20:18:23.578 [main] INFO  org.terrier.applications.TrecTerrier - Collection statistics:
-20:18:23.579 [main] INFO  org.terrier.applications.TrecTerrier - number of indexed documents: 528155
-20:18:23.579 [main] INFO  org.terrier.applications.TrecTerrier - size of vocabulary: 738439
-20:18:23.579 [main] INFO  org.terrier.applications.TrecTerrier - number of tokens: 156321446
-20:18:23.579 [main] INFO  org.terrier.applications.TrecTerrier - number of pointers: 90931618
+09:19:29.939 [main] INFO  org.terrier.applications.TrecTerrier - Collection statistics:
+09:19:29.941 [main] INFO  org.terrier.applications.TrecTerrier - number of indexed documents: 528155
+09:19:29.941 [main] INFO  org.terrier.applications.TrecTerrier - size of vocabulary: 738439
+09:19:29.941 [main] INFO  org.terrier.applications.TrecTerrier - number of tokens: 156321446
+09:19:29.941 [main] INFO  org.terrier.applications.TrecTerrier - number of pointers: 90931618

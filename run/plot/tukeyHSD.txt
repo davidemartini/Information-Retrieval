@@ -2,10 +2,10 @@
 ===================================================
   group1    group2   meandiff  lower  upper  reject
 ---------------------------------------------------
-   BM25   BM25_stem   0.0029  -0.0816 0.0874 False 
-   BM25     TF_IDF   -0.0006  -0.0851 0.0838 False 
-   BM25   TF_IDF_not -0.0135   -0.098 0.071  False 
-BM25_stem   TF_IDF   -0.0035   -0.088 0.081  False 
-BM25_stem TF_IDF_not -0.0164  -0.1008 0.0681 False 
-  TF_IDF  TF_IDF_not -0.0128  -0.0973 0.0716 False 
+   BM25   BM25_stem  -0.0018  -0.0877 0.0842 False 
+   BM25     TF_IDF   -0.0005  -0.0865 0.0855 False 
+   BM25   TF_IDF_not -0.0251  -0.1111 0.0609 False 
+BM25_stem   TF_IDF    0.0012  -0.0848 0.0872 False 
+BM25_stem TF_IDF_not -0.0233  -0.1093 0.0626 False 
+  TF_IDF  TF_IDF_not -0.0246  -0.1106 0.0614 False 
 ---------------------------------------------------
