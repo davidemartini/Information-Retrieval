@@ -2,6 +2,7 @@ import os
 import numpy as np
 from scipy import stats
 from statsmodels.stats.multicomp import (pairwise_tukeyhsd, MultiComparison)
+from timeit import default_timer as timer
 import matplotlib as mpl
 mpl.use('tkagg')
 import matplotlib.pyplot as plt
@@ -27,10 +28,20 @@ class Structure:
 
 def setup_terrier():
     # setup terrier-core-4.4
-    os.system(path+"terrier-core-4.4/bin/trec_setup.sh "+path+"TIPSTER1/")
+    os.system(path+"terrier-core-4.4/bin/trec_setup.sh "+path+"TIPSTER/")
     os.system("echo ignore.low.idf.terms=true >> "+path+"terrier-core-4.4/etc/terrier.properties")
     os.system("echo trec.topics="+path+"topics.351-400_trec7.txt >> "+path+"terrier-core-4.4/etc/terrier.properties")
     os.system("echo trec.qrels="+path+"qrelstrec7.txt >> "+path+"terrier-core-4.4/etc/terrier.properties")
+    f = open(path+"terrier-core-4.4/etc/terrier.properties", "r").read().split("\n")
+    fout = open(path+"terrier-core-4.4/etc/terrier.properties", "w")
+    for i in range(len(f)):
+        if f[i] == "TrecQueryTags.process=TOP,NUM,TITLE":
+            fout.write("TrecQueryTags.process=TITLE,DESC\n")
+        elif f[i] == "TrecQueryTags.skip=DESC,NARR":
+            fout.write("TrecQueryTags.skip=NARR\n")
+        else:
+            fout.write(f[i]+"\n")
+    fout.close()
 
 
 def copy_all(model, stopword, stemmer, rm):
@@ -58,10 +69,17 @@ def copy_all(model, stopword, stemmer, rm):
         os.system("rm "+path+"terrier-core-4.4/var/index/*")
 
 
-def terrier():
+def terrier(time):
     setup_terrier()
     # setup terrier.properties
+    start = timer()
     os.system(path+"terrier-core-4.4/bin/trec_terrier.sh -i")
+    end = timer()
+    time.append(end-start)
+    time.append(end-start)
+    # save in file the stats of indexing
+    os.system(path+"terrier-core-4.4/bin/trec_terrier.sh --printstats > "+path+"indexes/TF_IDF_stats.txt")
+    os.system(path+"terrier-core-4.4/bin/trec_terrier.sh --printstats > "+path+"indexes/BM25_stats.txt")
     # rum TF_IDF stoplist, Porter stemmer
     os.system(path+"terrier-core-4.4/bin/trec_terrier.sh -r -Dtrec.model=TF_IDF")
     # run BM25 stoplist, Porter stemmer
@@ -78,8 +96,12 @@ def terrier():
         else:
             fout.write(f[i]+"\n")
     fout.close()
-    #os.system("echo -Dtermpipelines=PorterStemmer >> "+path+"terrier-core-4.4/etc/terrier.properties")
+    start = timer()
     os.system(path+"terrier-core-4.4/bin/trec_terrier.sh -i ")
+    end = timer()
+    time.append(end-start)
+    # save in file the stats of indexing
+    os.system(path+"terrier-core-4.4/bin/trec_terrier.sh --printstats > "+path+"indexes/BM25_stem_stats.txt")
     # run BM25 Porter stemmer
     os.system(path+"terrier-core-4.4/bin/trec_terrier.sh -r -Dtrec.model=BM25")
     copy_all("BM25", 0, 1, 1)
@@ -93,10 +115,51 @@ def terrier():
         else:
             fout.write(f[i]+"\n")
     fout.close()
+    start = timer()
     os.system(path+"terrier-core-4.4/bin/trec_terrier.sh -i")
+    end = timer()
+    time.append(end-start)
+    # save in file the stats of indexing
+    os.system(path+"terrier-core-4.4/bin/trec_terrier.sh --printstats > "+path+"indexes/TF_IDF_not_stats.txt")
     # run TF_IDF no stopword no Porter stemmer
     os.system(path+"terrier-core-4.4/bin/trec_terrier.sh -r -Dtrec.model=TF_IDF")
     copy_all("TF_IDF", 0, 0, 1)
+
+
+def create_time_file(path, time):
+    # create a matrix file with p_10
+    f = open(path+"indexes/execution_time.txt", "w")
+    f.write('TF_IDF\tBM25\tBM25_stem\tTF_IDF_not\n')
+    f.write(str(time[0])+'\t'+str(time[1])+'\t'+str(time[2])+'\t'+str(time[3])+'\n')
+    f.close()
+
+
+def read_time(path):
+    return np.loadtxt(path+"indexes/execution_time.txt", skiprows=1, delimiter='\t')
+
+
+def plot_time(path, time, run):
+    files = os.listdir(path+"indexes/run/")
+    if "plot" not in files:
+        os.system("mkdir " + path + "indexes/run/plot")
+    title = "Time of execution of indicizations"
+    fileplot = path+"indexes/run/plot/time_exec.svg"
+    plt.figure(figsize=(30, 20))
+    plt.rcParams.update({'font.size': 22})
+    plt.bar(run, time, 0.25)
+    plt.xlabel('Model')
+    plt.ylabel('Time (sec)')
+    plt.suptitle(title, fontsize=40)
+    ax = plt.gca()
+    text = "TF_IDF = TF_IDF with Stopword and Porter Stemmer\n"
+    text = text+ "BM25 = BM25 with Stopword and Porter Stemmer\n"
+    text = text+ "BM25_stem = BM25 without Stopword with Porter Stemmer\n"
+    text = text + "TF_IDF_not = TF_IDF without Stopword and Porter Stemmer"
+    at = AnchoredText(text, loc='lower left', prop=dict(size=18), frameon=True)
+    at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+    ax.add_artist(at)
+    plt.savefig(fileplot, dpi=300)
+    plt.clf()
 
 
 def trec_eval():
@@ -110,7 +173,7 @@ def trec_eval():
     os.system(path+"trec_eval-master/trec_eval -q -m all_trec "+path+"qrelstrec7.txt "+path+"indexes/run/TF_IDF.res > "+path+"indexes/run/eval/evalTF_IDF.txt")
     os.system(path+"trec_eval-master/trec_eval -q -m all_trec "+path+"qrelstrec7.txt "+path+"indexes/run/BM25.res > "+path+"indexes/run/eval/evalBM25.txt")
     os.system(path+"trec_eval-master/trec_eval -q -m all_trec "+path+"qrelstrec7.txt "+path+"indexes/run/BM25_stem.res > "+path+"indexes/run/eval/evalBM25_stem.txt")
-    os.system(path+"trec_eval-master/trec_eval -q -m all_trec "+path+"qrelstrec7.txt "+path+"indexes/run//TF_IDF_not.res > "+path+"indexes/run/eval/evalTF_IDF_not.txt")
+    os.system(path+"trec_eval-master/trec_eval -q -m all_trec "+path+"qrelstrec7.txt "+path+"indexes/run/TF_IDF_not.res > "+path+"indexes/run/eval/evalTF_IDF_not.txt")
 
 
 def create_file(path):
@@ -153,44 +216,47 @@ def data(file):
 def create_ap_file(path, structure):
     # create a matrix file with ap
     f = open(path+"indexes/ap.txt", "w")
+    f.write('TF_IDF\tBM25\tBM25_stem\tTF_IDF_not\n')
     for i in range(structure[0].ntopic):
         for j in range(len(structure)):
             f.write(structure[j].measure[i].ap)
             if j != len(structure)-1:
-                f.write(" ")
+                f.write('\t')
             else:
-                f.write("\n")
+                f.write('\n')
     f.close()
 
 
 def create_rprec_file(path, structure):
     # create a matrix file with rprec
     f = open(path+"indexes/rprec.txt", "w")
+    f.write('TF_IDF\tBM25\tBM25_stem\tTF_IDF_not\n')
     for i in range(structure[0].ntopic):
         for j in range(len(structure)):
             f.write(structure[j].measure[i].rprec)
             if j != len(structure)-1:
-                f.write(" ")
+                f.write('\t')
             else:
-                f.write("\n")
+                f.write('\n')
     f.close()
 
 
 def create_p_10_file(path, structure):
     # create a matrix file with p_10
     f = open(path+"indexes/p_10.txt", "w")
+    f.write('TF_IDF\tBM25\tBM25_stem\tTF_IDF_not\n')
     for i in range(structure[0].ntopic):
         for j in range(len(structure)):
             f.write(structure[j].measure[i].p_10)
             if j != len(structure)-1:
-                f.write(" ")
+                f.write('\t')
             else:
-                f.write("\n")
+                f.write('\n')
     f.close()
 
 
 def make_datagroup(structure):
-    data = np.zeros(200)
+    data = np.zeros(structure[0].ntopic*len(structure))
     group = []
     for j in range(len(structure)):
         for i in range(structure[0].ntopic):
@@ -201,8 +267,8 @@ def make_datagroup(structure):
                 group.append("BM25")
             elif j == 2:
                 group.append("BM25_stem")
-            else:
-                group.append("TD_IDF_not")
+            elif j == 3:
+                group.append("TF_IDF_not")
     return data, group
 
 
@@ -242,10 +308,10 @@ def tukey(structure, alpha):
     axes.set_xlabel("Average Precision (AP)", fontsize=30)
     axes.tick_params(labelsize=30)
     fileplot = path+"indexes/run/plot/TukeyHSDtest.svg"
-    text = "TF_IDF = TF_IDF with Stopword and Porter Stemmer\n"
-    text = text + "BM25 = BM25 with Stopword and Porter Stemmer\n"
-    text = text + "BM25_stem = BM25 without Stopword with Porter Stemmer\n"
-    text = text + "TF_IDF_not = TF_IDF without Stopword and Porter Stemmer"
+    text = "TF_IDF = TF_IDF with stop list and Porter Stemmer\n"
+    text = text + "BM25 = BM25 with stop list and Porter Stemmer\n"
+    text = text + "BM25_stem = BM25 without stop list with Porter Stemmer\n"
+    text = text + "TF_IDF_not = TF_IDF without stop list and Porter Stemmer"
     at = AnchoredText(text, loc='lower left', prop=dict(size=18), frameon=True)
     at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
     axes.add_artist(at)
@@ -253,25 +319,6 @@ def tukey(structure, alpha):
     fw = open(path+"indexes/run/plot/tukeyHSD.txt", "w")
     fw.write(str(tukey.summary()))
     print(tukey.summary())
-    fw.close()
-
-
-def tukey1(structure, alpha):
-    data, group = make_datagroup(structure)
-    mc = MultiComparison(data, group)
-    result = mc.tukeyhsd(alpha)
-    fig = tukey.plot_simultaneous()    # Plot group confidence intervals
-    fig.set_figwidth(30)
-    fig.set_figheight(20)
-    axes = fig.gca()
-    fig.suptitle('TukeyHSD test', fontsize=40)
-    axes.set_xlabel("Average Precision (AP)", fontsize=30)
-    axes.tick_params(labelsize=30)
-    fileplot = path+"indexes/run/plot/TukeyHSDtest.svg"
-    fig.savefig(fileplot, dpi=300)
-    fw = open(path+"indexes/run/plot/tukeyHSD.txt", "w")
-    fw.write(result)
-    print(result)
     fw.close()
 
 
@@ -308,16 +355,16 @@ def plot_rprec(topic, rprec):
         os.system("mkdir " + path + "indexes/run/plot")
     for i in range(len(rprec)):
         if i == 0:
-            title = "TF_IDF with Stopwords and Porter Stemmer"
+            title = "TF_IDF with stop list and Porter Stemmer"
             fileplot = path+"indexes/run/plot/RprecTF_IDF.svg"
         elif i == 1:
-            title = "BM25 with Stopwords and Porter Stemmer"
+            title = "BM25 with stop list and Porter Stemmer"
             fileplot = path+"indexes/run/plot/RprecBM25.svg"
         elif i == 2:
-            title = "BM25 without Stopwords with Porter Stemmer"
+            title = "BM25 without stop list with Porter Stemmer"
             fileplot = path+"indexes/run/plot/RprecBM25_stem.svg"
-        else:
-            title = "TF_IDF without Stopwords and Porter Stemmer"
+        elif i == 3:
+            title = "TF_IDF without stop list and Porter Stemmer"
             fileplot = path+"indexes/run/plot/RprecTF_IDF_not.svg"
         plt.figure(figsize=(30, 20))
         plt.rcParams.update({'font.size': 22})
@@ -344,7 +391,7 @@ def plot_p_10(topic, p_10):
         elif i == 2:
             title = "BM25 without Stopwords with Porter Stemmer"
             fileplot = path+"indexes/run/plot/P_10BM25_stem.svg"
-        else:
+        elif i == 3:
             title = "TF_IDF without Stopwords and Porter Stemmer"
             fileplot = path+"indexes/run/plot/P_10TF_IDF_not.svg"
         plt.figure(figsize=(30, 20))
@@ -363,7 +410,7 @@ def list_run():
     run.append("TF_IDF")
     run.append("BM25")
     run.append("BM25_stem")
-    run.append("TD_IDF_not")
+    run.append("TF_IDF_not")
     return run
 
 
@@ -389,8 +436,8 @@ def plot_map(run, map):
     plt.suptitle(title, fontsize=40)
     ax = plt.gca()
     text = "TF_IDF = TF_IDF with Stopword and Porter Stemmer\n"
-    text = text+ "BM25 = BM25 with Stopword and Porter Stemmer\n"
-    text = text+ "BM25_stem = BM25 without Stopword with Porter Stemmer\n"
+    text = text + "BM25 = BM25 with Stopword and Porter Stemmer\n"
+    text = text + "BM25_stem = BM25 without Stopword with Porter Stemmer\n"
     text = text + "TF_IDF_not = TF_IDF without Stopword and Porter Stemmer"
     at = AnchoredText(text, loc='lower left', prop=dict(size=18), frameon=True)
     at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
@@ -399,28 +446,43 @@ def plot_map(run, map):
     plt.clf()
 
 
-
-
 # create indexes folder
 path = "/home/martinidav/Desktop/Homework_1_IR/resources/"
 files = os.listdir(path)
 if "indexes" not in files:
     os.system("mkdir " + path + "indexes")
-#terrier()
+    os.system("mkdir " + path + "indexes/run")
+    os.system("mkdir " + path + "indexes/run/plot")
+time = []
+# execute the indexing for each model
+terrier(time)
+# collected time of executions is write
+create_time_file(path, time)
+# execute the evaluation of runs
 trec_eval()
+# read and memorize on file all measures
 file = create_file(path)
 structure = data(file)
 create_ap_file(path, structure)
 create_rprec_file(path, structure)
 create_p_10_file(path, structure)
+# compute ANOVA 1-way test
 f, p = anova(structure)
 print_anova(f, p)
+# compute Tukey HSD pairwise test and Tukey HSD multiple comparisons
 tukey(structure, 0.05)
+# prepare data for plot
 topic = list_topic(structure)
 rprec = list_rprec(structure)
+# plot Rprec for each run on every topic
 plot_rprec(topic, rprec)
+# plot P(10) for each run on every topic
 p_10 = list_p_10(structure)
 plot_p_10(topic, p_10)
 run = list_run()
 map = list_map(structure)
+# plot MAP for each run
 plot_map(run, map)
+# plot execution time for each model
+time = read_time(path)
+plot_time(path, time, run)
