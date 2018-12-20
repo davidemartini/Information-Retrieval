@@ -255,12 +255,17 @@ def create_p_10_file(path, structure):
     f.close()
 
 
-def make_datagroup(structure):
+def make_datagroup(structure, measure):
     data = np.zeros(structure[0].ntopic*len(structure))
     group = []
     for j in range(len(structure)):
         for i in range(structure[0].ntopic):
-            data[j*structure[0].ntopic+i] = float(structure[j].measure[i].ap)
+            if measure == 'ap':
+                data[j*structure[0].ntopic+i] = float(structure[j].measure[i].ap)
+            elif measure == 'p_10':
+                data[j*structure[0].ntopic+i] = float(structure[j].measure[i].p_10)
+            else:
+                data[j*structure[0].ntopic+i] = float(structure[j].measure[i].rprec)
             if j == 0:
                 group.append("TF_IDF")
             elif j == 1:
@@ -272,24 +277,34 @@ def make_datagroup(structure):
     return data, group
 
 
-def ap_anova(structure):
-    ap = []
+def m_anova(structure, measure):
+    m = []
     for j in range(len(structure)):
         data = []
         for i in range(structure[0].ntopic):
-            data.append(structure[j].measure[i].ap)
-        ap.append(data)
-    return ap
+            if measure == 'ap':
+                data.append(structure[j].measure[i].ap)
+            elif measure == 'p_10':
+                data.append(structure[j].measure[i].p_10)
+            else:
+                data.append(structure[j].measure[i].rprec)
+        m.append(data)
+    return m
 
 
-def anova(structure):
-    ap = ap_anova(structure)
-    f, p = stats.f_oneway(ap[0], ap[1], ap[2], ap[3])
+def anova(structure, measure):
+    m = m_anova(structure, measure)
+    f, p = stats.f_oneway(m[0], m[1], m[2], m[3])
     return f, p
 
 
-def print_anova(f, p):
-    fw = open(path+"indexes/run/plot/anova.txt", "w")
+def print_anova(f, p, measure):
+    if measure == 'ap':
+        fw = open(path+"indexes/run/plot/anovaAP.txt", "w")
+    elif measure == 'p_10':
+        fw = open(path+"indexes/run/plot/anovaP_10.txt", "w")
+    else:
+        fw = open(path+"indexes/run/plot/anovaRprec.txt", "w")
     anova = ['One-way ANOVA', '=============', 'F value: '+str(f), 'P value: '+str(p)]
     for i in range(len(anova)):
         print(anova[i])
@@ -297,30 +312,76 @@ def print_anova(f, p):
     fw.close()
 
 
-def tukey(structure, alpha):
-    data, group = make_datagroup(structure)
-    tukey = pairwise_tukeyhsd(data, group, alpha)
-    fig = tukey.plot_simultaneous()    # Plot group confidence intervals
-    fig.set_figwidth(30)
-    fig.set_figheight(20)
-    axes = fig.gca()
-    fig.suptitle('TukeyHSD test', fontsize=40)
-    axes.set_xlabel("Average Precision (AP)", fontsize=30)
-    axes.tick_params(labelsize=30)
-    fileplot = path+"indexes/run/plot/TukeyHSDtest.svg"
-    text = "TF_IDF = TF_IDF with stop list and Porter Stemmer\n"
-    text = text + "BM25 = BM25 with stop list and Porter Stemmer\n"
-    text = text + "BM25_stem = BM25 without stop list with Porter Stemmer\n"
-    text = text + "TF_IDF_not = TF_IDF without stop list and Porter Stemmer"
-    at = AnchoredText(text, loc='lower left', prop=dict(size=18), frameon=True)
-    at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
-    axes.add_artist(at)
-    fig.savefig(fileplot, dpi=300)
-    fw = open(path+"indexes/run/plot/tukeyHSD.txt", "w")
-    fw.write(str(tukey.summary()))
-    print(tukey.summary())
-    fw.close()
-
+def tukey(structure, alpha, measure):
+    if measure == 'ap':
+        data, group = make_datagroup(structure, measure)
+        tukey = pairwise_tukeyhsd(data, group, alpha)
+        fig = tukey.plot_simultaneous()    # Plot group confidence intervals
+        fig.set_figwidth(30)
+        fig.set_figheight(20)
+        axes = fig.gca()
+        fig.suptitle('TukeyHSD test', fontsize=40)
+        axes.set_xlabel("Average Precision (AP)", fontsize=30)
+        axes.tick_params(labelsize=30)
+        fileplot = path+"indexes/run/plot/TukeyHSDtestAP.svg"
+        text = "TF_IDF = TF_IDF with stop list and Porter Stemmer\n"
+        text = text + "BM25 = BM25 with stop list and Porter Stemmer\n"
+        text = text + "BM25_stem = BM25 without stop list with Porter Stemmer\n"
+        text = text + "TF_IDF_not = TF_IDF without stop list and Porter Stemmer"
+        at = AnchoredText(text, loc='lower left', prop=dict(size=18), frameon=True)
+        at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+        axes.add_artist(at)
+        fig.savefig(fileplot, dpi=300)
+        fw = open(path+"indexes/run/plot/tukeyHSDAP.txt", "w")
+        fw.write(str(tukey.summary()))
+        print(tukey.summary())
+        fw.close()
+    elif measure == 'p_10':
+        data, group = make_datagroup(structure, measure)
+        tukey = pairwise_tukeyhsd(data, group, alpha)
+        fig = tukey.plot_simultaneous()    # Plot group confidence intervals
+        fig.set_figwidth(30)
+        fig.set_figheight(20)
+        axes = fig.gca()
+        fig.suptitle('TukeyHSD test', fontsize=40)
+        axes.set_xlabel("P(10)", fontsize=30)
+        axes.tick_params(labelsize=30)
+        fileplot = path+"indexes/run/plot/TukeyHSDtestP_10.svg"
+        text = "TF_IDF = TF_IDF with stop list and Porter Stemmer\n"
+        text = text + "BM25 = BM25 with stop list and Porter Stemmer\n"
+        text = text + "BM25_stem = BM25 without stop list with Porter Stemmer\n"
+        text = text + "TF_IDF_not = TF_IDF without stop list and Porter Stemmer"
+        at = AnchoredText(text, loc='lower left', prop=dict(size=18), frameon=True)
+        at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+        axes.add_artist(at)
+        fig.savefig(fileplot, dpi=300)
+        fw = open(path+"indexes/run/plot/tukeyHSDP_10.txt", "w")
+        fw.write(str(tukey.summary()))
+        print(tukey.summary())
+        fw.close()
+    else:
+        data, group = make_datagroup(structure, measure)
+        tukey = pairwise_tukeyhsd(data, group, alpha)
+        fig = tukey.plot_simultaneous()    # Plot group confidence intervals
+        fig.set_figwidth(30)
+        fig.set_figheight(20)
+        axes = fig.gca()
+        fig.suptitle('TukeyHSD test', fontsize=40)
+        axes.set_xlabel("Rprec", fontsize=30)
+        axes.tick_params(labelsize=30)
+        fileplot = path+"indexes/run/plot/TukeyHSDtestRprec.svg"
+        text = "TF_IDF = TF_IDF with stop list and Porter Stemmer\n"
+        text = text + "BM25 = BM25 with stop list and Porter Stemmer\n"
+        text = text + "BM25_stem = BM25 without stop list with Porter Stemmer\n"
+        text = text + "TF_IDF_not = TF_IDF without stop list and Porter Stemmer"
+        at = AnchoredText(text, loc='lower left', prop=dict(size=18), frameon=True)
+        at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
+        axes.add_artist(at)
+        fig.savefig(fileplot, dpi=300)
+        fw = open(path+"indexes/run/plot/tukeyHSDRprec.txt", "w")
+        fw.write(str(tukey.summary()))
+        print(tukey.summary())
+        fw.close()
 
 def list_rprec(structure):
     rprec = []
@@ -337,7 +398,7 @@ def list_p_10(structure):
     for j in range(len(structure)):
         data = []
         for i in range(structure[0].ntopic):
-            data.append(float(structure[j].measure[i].rprec))
+            data.append(float(structure[j].measure[i].p_10))
         p_10.append(data)
     return p_10
 
@@ -467,10 +528,16 @@ create_ap_file(path, structure)
 create_rprec_file(path, structure)
 create_p_10_file(path, structure)
 # compute ANOVA 1-way test
-f, p = anova(structure)
-print_anova(f, p)
+f, p = anova(structure, 'ap')
+print_anova(f, p, 'ap')
+f, p = anova(structure, 'p_10')
+print_anova(f, p, 'p_10')
+f, p = anova(structure, 'rprec')
+print_anova(f, p, 'rprec')
 # compute Tukey HSD pairwise test and Tukey HSD multiple comparisons
-tukey(structure, 0.05)
+tukey(structure, 0.05, 'ap')
+tukey(structure, 0.05, 'p_10')
+tukey(structure, 0.05, 'rprec')
 # prepare data for plot
 topic = list_topic(structure)
 rprec = list_rprec(structure)

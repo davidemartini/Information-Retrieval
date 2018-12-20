@@ -1,0 +1,11 @@
+ Multiple Comparison of Means - Tukey HSD,FWER=0.05
+===================================================
+  group1    group2   meandiff  lower  upper  reject
+---------------------------------------------------
+   BM25   BM25_stem   0.0034  -0.0786 0.0854 False 
+   BM25     TF_IDF    0.0019  -0.0801 0.0839 False 
+   BM25   TF_IDF_not -0.0246  -0.1066 0.0574 False 
+BM25_stem   TF_IDF   -0.0015  -0.0835 0.0805 False 
+BM25_stem TF_IDF_not  -0.028   -0.11  0.054  False 
+  TF_IDF  TF_IDF_not -0.0265  -0.1085 0.0555 False 
+---------------------------------------------------
